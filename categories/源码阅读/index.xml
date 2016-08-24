@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>散列表 on jatesun</title>
-    <link>http://jatesun.github.io/tags/%E6%95%A3%E5%88%97%E8%A1%A8/</link>
-    <description>Recent content in 散列表 on jatesun</description>
+    <title>源码阅读 on jatesun</title>
+    <link>http://jatesun.github.io/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/</link>
+    <description>Recent content in 源码阅读 on jatesun</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 24 Aug 2016 16:26:31 +0200</lastBuildDate>
-    <atom:link href="http://jatesun.github.io/tags/%E6%95%A3%E5%88%97%E8%A1%A8/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://jatesun.github.io/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>集合源码之hashMap</title>
@@ -127,77 +127,6 @@ return h &amp;amp; (length-1);
 
 &lt;p&gt;在多线程情况下，hashmap的put、get方法都是很脆弱的。这是一个比较大的话题，推荐大家看耗子叔的博客：&lt;a href=&#34;http://coolshell.cn/articles/9606.html&#34;&gt;疫苗：Java HashMap的死循环&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
 &lt;/ul&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>散列表面面观</title>
-      <link>http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82</link>
-      <pubDate>Fri, 12 Aug 2016 15:26:31 +0200</pubDate>
-      
-      <guid>http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82</guid>
-      <description>
-
-&lt;p&gt;&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&#34;引子:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;引子&lt;/h2&gt;
-
-&lt;p&gt;&lt;a href=&#34;https://zh.wikipedia.org/wiki/%E6%95%A3%E5%88%97&#34;&gt;散列&lt;/a&gt;的概念应用很广泛，比如加密，散列表，几何散列等。而&lt;a href=&#34;https://zh.wikipedia.org/wiki/%E5%93%88%E5%B8%8C%E8%A1%A8&#34;&gt;散列表&lt;/a&gt;更是日常工作中常见的数据结构，同时也是面试中最常见的面试话题之一，很多问题都可以归结到散列表。网上的大部分文章都是直接进入&lt;a href=&#34;https://docs.oracle.com/javase/8/docs/api/java/util/HashMap.html&#34;&gt;hashMap&lt;/a&gt;的源码解读上，这会让很多刚开始接触散列表的童鞋觉得如坠雾里，看的不知所以。我认为这是因为对于散列的最基本的概念不熟悉导致的，所以这篇文章立足于散列的基本概念，层层递进讲解散列表，目的是让不了解散列的同学读完这篇文章也能较为深入了解散列表。&lt;/p&gt;
-
-&lt;h2 id=&#34;什么是散列表:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;什么是散列表&lt;/h2&gt;
-
-&lt;p&gt;提到散列表，关键的三个概念是键（key）、散列函数（hash Fuction）、散列表（hash Table）。通过wiki的解释我们可以加深理解&lt;code&gt;散列表是根据键（key）直接访问内存存储位置的数据结构。即通过调用一个散列函数（形如F(key)）来得到实际存放位置（散列表）来访问记录&lt;/code&gt;还有一个实际的例子：&lt;code&gt;查找电话簿中某人号码，在首字母为W的表中查找“王”姓的电话号码，显然比直接查找就要快得多。这里使用人名作为关键字，“取首字母”是这个例子中散列函数的函数法则  F()，存放首字母的表对应散列表。&lt;/code&gt;我们可以通过下图简单的模型更加形象的了解散列表。
-&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie1.jpg&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&#34;为什么会有散列:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;为什么会有散列&lt;/h2&gt;
-
-&lt;p&gt;hash的概念起源于1956年，dumey用它来解决&lt;a href=&#34;https://zh.wikipedia.org/wiki/%E7%AC%A6%E5%8F%B7%E8%A1%A8&#34;&gt;符号表问题&lt;/a&gt;。使得数据表的插入、删除、查询操作都可以在常数时间完成。我们常用的arrayList、linkedList一个善于查询、一个善于新增和删除，而散列表完美的将两者的长处集合，通过一层散列函数将数据的增删改查都维持在常数时间，正是这种长处让散列如此迷人。&lt;/p&gt;
-
-&lt;h2 id=&#34;散列深入:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;散列深入&lt;/h2&gt;
-
-&lt;p&gt;接下来我们更加深入的了解散列的内容&lt;/p&gt;
-
-&lt;h4 id=&#34;散列函数:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;散列函数&lt;/h4&gt;
-
-&lt;p&gt;我们知道散列函数就是通过key找到对应值的函数。作为一个散列函数，唯一的职责就是将key散列到散列表对应的位置上，从而找到记录。那么一个好的散列函数应该是保证对于每个key都均匀的对应到散列表的位置上，而不是每次都对应一个位置，或者某些位置对应次数明显多于其他，这是非常重要的。因为散列函数越好，那么出现散列冲突（见下面散列冲突）的次数就越少，从而间接提高了整个散列表的效率。&lt;/p&gt;
-
-&lt;h4 id=&#34;散列冲突:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;散列冲突&lt;/h4&gt;
-
-&lt;p&gt;所谓散列冲突，就是多个key通过散列函数散列之后对应同一个地址。出现散列冲突之后我们要进行冲突的处理。通常使用的散列冲突处理方法有两种。一种是分离链接法（拉链法），另外一种是开放定址法（探测散列）。下面通过简单的散列函数（除留余数）来简单的介绍这两种方法。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;p&gt;&lt;strong&gt;分离链接&lt;/strong&gt;: 当遇到散列冲突时，使用链表解决，将冲突的key放到原来数据节点后面，形成链表数据结构。我们经常使用的&lt;code&gt;hashmap使用的就是分离链接处理散列冲突&lt;/code&gt;。如下图所示
-&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-8-12-kaifadingzhi.jpg&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;&lt;strong&gt;开放定址&lt;/strong&gt;:遇到散列冲突，一次尝试余下的单元，直到有空单元。如下图
-&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-8-12-kaifang.jpg&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h4 id=&#34;装填因子:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;装填因子&lt;/h4&gt;
-
-&lt;p&gt;装填因子一般用λ表示，意义为散列表中的元素个数与该表大小的比。如果比例超过了装填因子，那么散列表会扩容，然后将原本的数据重新散列到新的散列表里，这个过程称之为&lt;code&gt;rehash&lt;/code&gt;（再散列）。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;p&gt;&lt;strong&gt;越大越好？&lt;/strong&gt;:一般散列表会设置装填因子，理想的装填因子当然是1，即填满散列表，但是实际上并不是如此。因为装填因子越大意味着发生散列冲突的概率越大，而散列冲突对散列表的效率有影响。这一点不难理解，因为散列的是否发生多少冲突，那么查询修改删除的时候也会遇到同样次数的冲突，次数越多散列表的效率越低，所以装填因子不是越大越好而是选择合适的值。&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;&lt;strong&gt;应该多大&lt;/strong&gt;：不同的散列冲突方法采用的装填因子是不同的。比如分离链接采用的装填因子一般是0.7到0.8，开放定址一般是小于0.5（&lt;code&gt;hashmap默认的装填因子为0.75&lt;/code&gt;）。这是因为分离连接采用的是链表解决冲突，如果冲突就加到链表里，这步动作是常数时间不论发生多少次冲突，而对于开放定址遇到冲突会继续寻找空单元，如果装填因子太大，那么冲突次数会增多，影响效率。所以分离连接的装填因子比开放定址的要大一些。&lt;/p&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id=&#34;结语:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;结语&lt;/h2&gt;
-
-&lt;p&gt;本文对散列表的起源，基本的概念做了初步的介绍。理解这些散列表的概念能够帮助我们在平常使用散列表相关的比如hashmap等做到心中有数，同时对理解hashmap的实现也有很大的帮助。篇幅所限，关于散列表更加细致的内容此处没有详细讲解，但是相信度过的童鞋对于散列表也应该有了初步的理解，后续会深入研究java中用到散列的集合类，从而更加深入的理解散列表。&lt;/p&gt;
-
-&lt;h2 id=&#34;参考资料:1ef033cbd1577857c2f001722bad4a2f&#34;&gt;参考资料&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;https://zh.wikipedia.org/wiki/%E5%93%88%E5%B8%8C%E8%A1%A8&#34;&gt;散列表Wiki百科&lt;/a&gt;  &lt;a href=&#34;https://zh.wikipedia.org/wiki/%E6%95%A3%E5%88%97&#34;&gt;散列wiki百科&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://www.amazon.cn/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6%E4%B8%9B%E4%B9%A6%C2%B7%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%88%86%E6%9E%90-Java%E8%AF%AD%E8%A8%80%E6%8F%8F%E8%BF%B0-%E9%A9%AC%E5%85%8B%C2%B7%E8%89%BE%E4%BC%A6%C2%B7%E7%BB%B4%E6%96%AF/dp/B01CNP0CG6/ref=sr_1_2?ie=UTF8&amp;amp;qid=1470986690&amp;amp;sr=8-2&amp;amp;keywords=%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%88%86%E6%9E%90&#34;&gt;数据结构与算法分析:Java语言描述&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;blockquote&gt;
-&lt;p&gt;如果你觉得我的文章写得不错，对你有所启发的话，欢迎分享，评论。谢谢支持
-                                                                                           ——jatesun&lt;/p&gt;
-&lt;/blockquote&gt;
 </description>
     </item>
     

@@ -151,12 +151,12 @@
     </div>
     <div class="article-info profile-block">
       <div class="article-info-block">
-        4
+        5
         <span>文章</span>
       </div>
       <div class="article-info-block">
         
-          4
+          5
           
         <span>
             标签
@@ -231,6 +231,79 @@
 
     <section id="main">
     
+    
+    <article class="article article-type-post" itemscope="" itemprop="blogPost">
+        <div class="article-inner">
+            
+            <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" itemprop="url">
+                
+            
+            </a>
+
+            <header class="article-header">
+    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap">
+    <h1 class="article-title" itemprop="name">
+        集合源码之hashMap
+    </h1>
+    </a>
+    <div class="article-meta">
+        <div class="article-date">
+            <i class="fa fa-calendar"></i>
+            <time datetime="2016-08-24 16:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-08-24</time>
+
+        </div>
+
+        
+        
+            
+            
+            <div class="article-category">
+                <i class="fa fa-folder"></i>
+                
+                <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">源码阅读</a>
+                
+                
+            </div>
+            
+        
+
+        
+            
+            
+            <div class="article-category">
+                <i class="fa fa-tags"></i>
+                
+                <a class="article-category-link" href="http://jatesun.github.io/tags/%e6%95%a3%e5%88%97%e8%a1%a8">散列表</a>
+                &middot;
+                
+                <a class="article-category-link" href="http://jatesun.github.io/tags/%e9%9b%86%e5%90%88">集合</a>
+                
+                
+            </div>
+            
+        
+    </div>
+</header>
+
+            <div class="article-entry" itemprop="articleBody">
+                <p>
+                    <p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg" alt="" /></p>
+
+<h2 id="引子:69821dbc4807e9884618c48763635519">引子</h2>
+
+<p>java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考<a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82/">散列表面面观</a>。</p>
+
+                    <br>
+                </p>
+                <p class="article-more-link">
+                    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap">
+                        继续阅读
+                    </a>
+                </p>
+            </div>
+            
+        </div>
+    </article>
     
     <article class="article article-type-post" itemscope="" itemprop="blogPost">
         <div class="article-inner">
@@ -534,6 +607,31 @@
             
             <li>
                 <div class="item-thumbnail">
+                    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" class="thumbnail">
+                    
+                        
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg)" alt="jatesun" class="thumbnail-image"></span>
+                        
+                    
+                    </a>
+                </div>
+                <div class="item-inner">
+                    
+                    <p class="item-category">
+                        <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">
+                        源码阅读
+                        </a>
+                    </p>
+                    
+                    <p class="item-title"><a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" class="title">集合源码之hashMap</a></p>
+                    <p class="item-date">
+                        <time datetime="2016-08-24 16:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-08-24</time>
+                    </p>
+                </div>
+            </li>
+            
+            <li>
+                <div class="item-thumbnail">
                     <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" class="thumbnail">
                     
                         
@@ -659,6 +757,13 @@
                 <span class="category-list-count">3</span>
             </li>
             
+            <li class="category-list-item">
+                <a class="category-list-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">
+                    源码阅读
+                </a>
+                <span class="category-list-count">1</span>
+            </li>
+            
         </ul>
     </div>
 </div>
@@ -682,6 +787,8 @@
         <a href="http://jatesun.github.io/tags/%e6%95%a3%e5%88%97%e8%a1%a8" style="font-size: 12px;">散列表</a>
         
         <a href="http://jatesun.github.io/tags/%e8%af%bb%e4%b9%a6" style="font-size: 12px;">读书</a>
+        
+        <a href="http://jatesun.github.io/tags/%e9%9b%86%e5%90%88" style="font-size: 12px;">集合</a>
         
     </div>
 </div>

@@ -18,18 +18,18 @@
     <link rel="stylesheet" href="http://jatesun.github.io/fancybox/jquery.fancybox.css">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400italic,400,600' rel='stylesheet' type='text/css'>
     <link href='https://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta property="og:title" content="散列表面面观" />
+    <meta property="og:title" content="集合源码之hashMap" />
 <meta property="og:description" content="
 
 引子
 
-散列的概念应用很广泛，比如加密，散列表，几何散列等。而散列表更是日常工作中常见的数据结构，同时也是面试中最常见的面试话题之一，很多问题都可以归结到散列表。网上的大部分文章都是直接进入hashMap的源码解读上，这会让很多刚开始接触散列表的童鞋觉得如坠雾里，看的不知所以。我认为这是因为对于散列的最基本的概念不熟悉导致的，所以这篇文章立足于散列的基本概念，层层递进讲解散列表，目的是让不了解散列的同学读完这篇文章也能较为深入了解散列表。
+java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
 " />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" />
+<meta property="og:url" content="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" />
 
 
-<meta property="og:updated_time" content="2016-08-12T15:26:31&#43;02:00"/>
+<meta property="og:updated_time" content="2016-08-24T16:26:31&#43;02:00"/>
 
 
 
@@ -42,17 +42,17 @@
 
     
     
-<meta itemprop="name" content="散列表面面观">
+<meta itemprop="name" content="集合源码之hashMap">
 <meta itemprop="description" content="
 
 引子
 
-散列的概念应用很广泛，比如加密，散列表，几何散列等。而散列表更是日常工作中常见的数据结构，同时也是面试中最常见的面试话题之一，很多问题都可以归结到散列表。网上的大部分文章都是直接进入hashMap的源码解读上，这会让很多刚开始接触散列表的童鞋觉得如坠雾里，看的不知所以。我认为这是因为对于散列的最基本的概念不熟悉导致的，所以这篇文章立足于散列的基本概念，层层递进讲解散列表，目的是让不了解散列的同学读完这篇文章也能较为深入了解散列表。
+java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
 ">
 
 
-<meta itemprop="dateModified" content="2016-08-12T15:26:31&#43;02:00" />
-<meta itemprop="wordCount" content="30">
+<meta itemprop="dateModified" content="2016-08-24T16:26:31&#43;02:00" />
+<meta itemprop="wordCount" content="70">
 
 
 
@@ -64,12 +64,12 @@
 
 
 
-<meta name="twitter:title" content="散列表面面观"/>
+<meta name="twitter:title" content="集合源码之hashMap"/>
 <meta name="twitter:description" content="
 
 引子
 
-散列的概念应用很广泛，比如加密，散列表，几何散列等。而散列表更是日常工作中常见的数据结构，同时也是面试中最常见的面试话题之一，很多问题都可以归结到散列表。网上的大部分文章都是直接进入hashMap的源码解读上，这会让很多刚开始接触散列表的童鞋觉得如坠雾里，看的不知所以。我认为这是因为对于散列的最基本的概念不熟悉导致的，所以这篇文章立足于散列的基本概念，层层递进讲解散列表，目的是让不了解散列的同学读完这篇文章也能较为深入了解散列表。
+java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
 "/>
 
 
@@ -176,15 +176,15 @@
             
 
             <header class="article-header">
-    <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82">
+    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap">
     <h1 class="article-title" itemprop="name">
-        散列表面面观
+        集合源码之hashMap
     </h1>
     </a>
     <div class="article-meta">
         <div class="article-date">
             <i class="fa fa-calendar"></i>
-            <time datetime="2016-08-12 15:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-08-12</time>
+            <time datetime="2016-08-24 16:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-08-24</time>
 
         </div>
 
@@ -195,7 +195,7 @@
             <div class="article-category">
                 <i class="fa fa-folder"></i>
                 
-                <a class="article-category-link" href="http://jatesun.github.io/categories/%e5%af%bb%e6%a0%b9%e6%ba%af%e6%ba%90">寻根溯源</a>
+                <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">源码阅读</a>
                 
                 
             </div>
@@ -209,6 +209,9 @@
                 <i class="fa fa-tags"></i>
                 
                 <a class="article-category-link" href="http://jatesun.github.io/tags/%e6%95%a3%e5%88%97%e8%a1%a8">散列表</a>
+                &middot;
+                
+                <a class="article-category-link" href="http://jatesun.github.io/tags/%e9%9b%86%e5%90%88">集合</a>
                 
                 
             </div>
@@ -220,74 +223,124 @@
             <div class="article-entry" itemprop="articleBody">
                 
 
-<p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg" alt="" /></p>
+<p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg" alt="" /></p>
 
-<h2 id="引子:1ef033cbd1577857c2f001722bad4a2f">引子</h2>
+<h2 id="引子:69821dbc4807e9884618c48763635519">引子</h2>
 
-<p><a href="https://zh.wikipedia.org/wiki/%E6%95%A3%E5%88%97">散列</a>的概念应用很广泛，比如加密，散列表，几何散列等。而<a href="https://zh.wikipedia.org/wiki/%E5%93%88%E5%B8%8C%E8%A1%A8">散列表</a>更是日常工作中常见的数据结构，同时也是面试中最常见的面试话题之一，很多问题都可以归结到散列表。网上的大部分文章都是直接进入<a href="https://docs.oracle.com/javase/8/docs/api/java/util/HashMap.html">hashMap</a>的源码解读上，这会让很多刚开始接触散列表的童鞋觉得如坠雾里，看的不知所以。我认为这是因为对于散列的最基本的概念不熟悉导致的，所以这篇文章立足于散列的基本概念，层层递进讲解散列表，目的是让不了解散列的同学读完这篇文章也能较为深入了解散列表。</p>
+<p>java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考<a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82/">散列表面面观</a>。</p>
 
-<h2 id="什么是散列表:1ef033cbd1577857c2f001722bad4a2f">什么是散列表</h2>
+<h2 id="hashmap的数据结构:69821dbc4807e9884618c48763635519">hashMap的数据结构</h2>
 
-<p>提到散列表，关键的三个概念是键（key）、散列函数（hash Fuction）、散列表（hash Table）。通过wiki的解释我们可以加深理解<code>散列表是根据键（key）直接访问内存存储位置的数据结构。即通过调用一个散列函数（形如F(key)）来得到实际存放位置（散列表）来访问记录</code>还有一个实际的例子：<code>查找电话簿中某人号码，在首字母为W的表中查找“王”姓的电话号码，显然比直接查找就要快得多。这里使用人名作为关键字，“取首字母”是这个例子中散列函数的函数法则  F()，存放首字母的表对应散列表。</code>我们可以通过下图简单的模型更加形象的了解散列表。
-<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie1.jpg" alt="" /></p>
+<p>程序是由数据结构和算法构成，弄懂了数据结构和算法，这个程序也就自然明白。而数据结构更是程序的骨架。所以首先，我们看一下hashmap的数据结构示意图，在示意图的基础上进行。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-08-21-hashmap.jpg" alt="" /></p>
 
-<h2 id="为什么会有散列:1ef033cbd1577857c2f001722bad4a2f">为什么会有散列</h2>
-
-<p>hash的概念起源于1956年，dumey用它来解决<a href="https://zh.wikipedia.org/wiki/%E7%AC%A6%E5%8F%B7%E8%A1%A8">符号表问题</a>。使得数据表的插入、删除、查询操作都可以在常数时间完成。我们常用的arrayList、linkedList一个善于查询、一个善于新增和删除，而散列表完美的将两者的长处集合，通过一层散列函数将数据的增删改查都维持在常数时间，正是这种长处让散列如此迷人。</p>
-
-<h2 id="散列深入:1ef033cbd1577857c2f001722bad4a2f">散列深入</h2>
-
-<p>接下来我们更加深入的了解散列的内容</p>
-
-<h4 id="散列函数:1ef033cbd1577857c2f001722bad4a2f">散列函数</h4>
-
-<p>我们知道散列函数就是通过key找到对应值的函数。作为一个散列函数，唯一的职责就是将key散列到散列表对应的位置上，从而找到记录。那么一个好的散列函数应该是保证对于每个key都均匀的对应到散列表的位置上，而不是每次都对应一个位置，或者某些位置对应次数明显多于其他，这是非常重要的。因为散列函数越好，那么出现散列冲突（见下面散列冲突）的次数就越少，从而间接提高了整个散列表的效率。</p>
-
-<h4 id="散列冲突:1ef033cbd1577857c2f001722bad4a2f">散列冲突</h4>
-
-<p>所谓散列冲突，就是多个key通过散列函数散列之后对应同一个地址。出现散列冲突之后我们要进行冲突的处理。通常使用的散列冲突处理方法有两种。一种是分离链接法（拉链法），另外一种是开放定址法（探测散列）。下面通过简单的散列函数（除留余数）来简单的介绍这两种方法。</p>
+<h4 id="散列表相关:69821dbc4807e9884618c48763635519">散列表相关</h4>
 
 <ul>
-<li><p><strong>分离链接</strong>: 当遇到散列冲突时，使用链表解决，将冲突的key放到原来数据节点后面，形成链表数据结构。我们经常使用的<code>hashmap使用的就是分离链接处理散列冲突</code>。如下图所示
-<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-12-kaifadingzhi.jpg" alt="" /></p></li>
+<li><strong>数组</strong>：即为上图的table，也就是hashmap底层的存储结构。该数字中存放的是hashmap定义的节点类，由于hashmap对冲突采用的拉链法，所以节点类之间形成了链表。</li>
+<li><strong>节点类</strong>：存储数据的节点类Entry。节点类数据结构为key、value、hash值以及指向下一个节点的next节点（类似链表的节点类）。</li>
+<li><strong>装填因子</strong>：loadFactor。在散列表面面观中提到，采用拉链法解决冲突的散列表的装填因子在0.75到0.80之间。hashmap的默认装填因子为0.75</li>
+<li><strong>散列函数</strong>：下文详述。</li>
+<li><strong>初始容量大小</strong>：默认为16，也可以通过构造函数传入，但是必须是2的指数，原因下文详述。</li>
 
-<li><p><strong>开放定址</strong>:遇到散列冲突，一次尝试余下的单元，直到有空单元。如下图
-<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-12-kaifang.jpg" alt="" /></p></li>
+<li><p><strong>临界容量</strong>：即为扩容的临界容量，为容量大小与装填因子的乘积。</p>
+
+<h4 id="实例变量:69821dbc4807e9884618c48763635519">实例变量</h4></li>
+
+<li><p><strong>大小</strong>：hashmap的大小（size）。</p></li>
+
+<li><p><strong>最大容量</strong>：MAXIMUM_CAPACITY，为1 &lt;&lt; 30。</p></li>
+
+<li><p><strong>修改次数</strong>：modCount。</p>
+
+<h2 id="hashmap关键算法实现:69821dbc4807e9884618c48763635519">hashMap关键算法实现</h2>
+
+<p>hashMap实现了map接口，下面我们会对map接口中的关键方法进行分析。</p>
+
+<h4 id="构造方法:69821dbc4807e9884618c48763635519">构造方法</h4>
+
+<p>hashMap提供了三个构造函数：无参构造函数、单参构造函数（容量）、双参构造函数（容量、装填因子）。我们探讨双参构造函数，其他两个都是以此为基础。构造方法分为如下几步：</p></li>
+
+<li><p><strong>参数校验</strong>：
+1、如果初始容量小于0，抛出参数异常。如果初始容量大于hashmap最大容量，那么默认赋值为最大容量
+2、如果装填因子小于0或不合法也抛出参数异常。</p></li>
+
+<li><p><strong>调整容量</strong>：调整容量至不小于初始容量的2的指数容量。即容量必须为2的指数大小。</p></li>
+
+<li><p><strong>初始化</strong>：初始化装填因子、初始化临界容量、初始化数组（大小即为调整容量后的大小）</p></li>
+
+<li><p><strong>init函数</strong>：钩子函数，用于子类实现自己特殊要求。</p>
+
+<h4 id="重要算法:69821dbc4807e9884618c48763635519">重要算法</h4>
+
+<p>对hashmap中重要的算法案进行分析，分为增删改查。所有的增删查方法modcount都要修改。</p>
+
+<h5 id="增-put-k-v-改:69821dbc4807e9884618c48763635519">增（put（K,V））、改</h5>
+
+<p>put的过程很简单：先校验参数，如果key为null那么就调用putForNullKey方法，否则找到key对应的table位置，遍历该位置的链表，如果链表中有该key那么就修改value否则就新增一个节点到改链表里。我们讨论put方法的几个函数细节：</p></li>
+
+<li><p><strong>putForNullKey</strong>：此方法针对key为null的put，需要注意的是null总是放在table[0]的位置。方法步骤跟put普通元素一样，遍历table[0]的链表，如果链表中存在null那么就修改value，如果不存在就新增Entry节点。看下面的动图可能更加形象。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-17-put-null.gif" alt="" /></p></li>
+
+<li><p><strong>hash重散列</strong>:将key的hashcode再进行一次散列计算，使hash的值更加分散。</p></li>
+
+<li><p><strong>indexFor</strong>：见最后一部分的问题探讨。</p></li>
+
+<li><p><strong>addEntry</strong>：增加一个节点。由于hashmap维护的是单链表，所以是在表头插入。增加节点的时候我们要考虑增加后是否需要扩容。如果需要扩容即扩容两倍，然后把源hashmap的table中的值拷贝到新的table中，需要重新散列，所以这个操作为O(n)时间复杂度。</p>
+
+<h5 id="删-remove-k:69821dbc4807e9884618c48763635519">删（remove(K)）</h5>
+
+<p>删除的过程也很清晰：先计算key所对应的table索引值，然后就是单链表删除节点的方法（单链表删除需要保留前一个节点以便完成节点删除后的替换）。我们以删除10为例子，看下过程。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-24-remove.gif" alt="" /></p>
+
+<h5 id="查-get-key:69821dbc4807e9884618c48763635519">查（get(key)）</h5>
+
+<p>查询很简单：如果为null就调用getForNullKey（table[0]顺序查找）。不为空找到table索引，然后遍历索引所在的单链表，如果找到key返回对应的value，否则返回null。查询比较简单，这里就不动态展示了。</p>
+
+<h5 id="其他方法:69821dbc4807e9884618c48763635519">其他方法</h5></li>
+
+<li><p><strong>size</strong>：返回当前map大小。</p></li>
+
+<li><p><strong>isEmpty</strong>：判断map是否为空。</p></li>
+
+<li><p><strong>getEntry</strong>：通过key找寻对应的entry节点。</p></li>
+
+<li><p><strong>keySet和values</strong>：通过迭代器返回key和value的集合，这里不进行讨论。</p>
+
+<h2 id="hashmap若干问题:69821dbc4807e9884618c48763635519">hashMap若干问题</h2>
+
+<h4 id="容量为2的指数的奥妙:69821dbc4807e9884618c48763635519">容量为2的指数的奥妙？</h4>
+
+<p>在文章开始，我们提到了hashmap数组容量必须为2的指数大小，而且构造函数参数如果不是2的指数还会调整到满足此规则的不小于传入参数的值，现在我们就来探究一下hashmap为什么要有这个规则。其实奥妙就在indexfor中,indexfor函数源码如下</p>
+
+<pre><code class="language-java">static int indexFor(int h, int length) {
+return h &amp; (length-1);
+}
+</code></pre>
+
+<p>关键就是在于length-1把容量大小-1后二进制所有的位都变为1，这样会减少散列冲突。我们以长度16和长度15比较<img src="http://oajsuo3nv.bkt.clouddn.com/2016-08-17-hashyu.jpg" alt="" />可以看到长度为15发生散列冲突，在散列值质量高的情况（hashmap通过hash函数保证），hashmap这种做法会让散列冲突尽可能减少。</p>
+
+<h4 id="transient关键字:69821dbc4807e9884618c48763635519">transient关键字？</h4>
+
+<p>我们可以看到hashmap中的table使用transient关键字修饰。transient关键字我们都熟悉，在序列化的时候可以不被序列化。那hashmap如何传值？答案当然是是通过writeObject，将hashmap中的值进行序列化。这里考虑到两个问题</p></li>
+
+<li><p><strong>空间考虑</strong>：hashmap很多存储空间尚未使用，序列化没有意义，仅序列化存储元素数组</p></li>
+
+<li><p><strong>不同jvm考虑</strong>：table中的内存分布是根据key的hashcode计算的，但是不同的jvm针对同一个可以产生的hashcode可能是不同的。如果使用默认序列化，反序列化之后元素位置是跟序列化之前相同的，可是这个jvm产生的hashcode变了，indexfor对于同一个key在不同的jvm对应不同的值，这样肯定不行的。这就是为什么要加transient关键字，为了就是忽略内存分布，通过readObject将hashmap重新生成。</p>
+
+<h4 id="volatile关键字:69821dbc4807e9884618c48763635519">volatile关键字？</h4>
+
+<p>在hashmap中，modCount、keySet、values都使用volatile关键字修饰。这里的原因其实很简单：我们知道volatile关键字一个特点就是内存可见性，某个变量修改之后其他线程会立即看到修改，上述三个变量都需要这样的特性，针对修改需要立即体现，所以用到了volatile关键字。</p>
+
+<h4 id="非线程安全:69821dbc4807e9884618c48763635519">非线程安全？</h4>
+
+<p>在多线程情况下，hashmap的put、get方法都是很脆弱的。这是一个比较大的话题，推荐大家看耗子叔的博客：<a href="http://coolshell.cn/articles/9606.html">疫苗：Java HashMap的死循环</a></p></li>
 </ul>
-
-<h4 id="装填因子:1ef033cbd1577857c2f001722bad4a2f">装填因子</h4>
-
-<p>装填因子一般用λ表示，意义为散列表中的元素个数与该表大小的比。如果比例超过了装填因子，那么散列表会扩容，然后将原本的数据重新散列到新的散列表里，这个过程称之为<code>rehash</code>（再散列）。</p>
-
-<ul>
-<li><p><strong>越大越好？</strong>:一般散列表会设置装填因子，理想的装填因子当然是1，即填满散列表，但是实际上并不是如此。因为装填因子越大意味着发生散列冲突的概率越大，而散列冲突对散列表的效率有影响。这一点不难理解，因为散列的是否发生多少冲突，那么查询修改删除的时候也会遇到同样次数的冲突，次数越多散列表的效率越低，所以装填因子不是越大越好而是选择合适的值。</p></li>
-
-<li><p><strong>应该多大</strong>：不同的散列冲突方法采用的装填因子是不同的。比如分离链接采用的装填因子一般是0.7到0.8，开放定址一般是小于0.5（<code>hashmap默认的装填因子为0.75</code>）。这是因为分离连接采用的是链表解决冲突，如果冲突就加到链表里，这步动作是常数时间不论发生多少次冲突，而对于开放定址遇到冲突会继续寻找空单元，如果装填因子太大，那么冲突次数会增多，影响效率。所以分离连接的装填因子比开放定址的要大一些。</p></li>
-</ul>
-
-<h2 id="结语:1ef033cbd1577857c2f001722bad4a2f">结语</h2>
-
-<p>本文对散列表的起源，基本的概念做了初步的介绍。理解这些散列表的概念能够帮助我们在平常使用散列表相关的比如hashmap等做到心中有数，同时对理解hashmap的实现也有很大的帮助。篇幅所限，关于散列表更加细致的内容此处没有详细讲解，但是相信度过的童鞋对于散列表也应该有了初步的理解，后续会深入研究java中用到散列的集合类，从而更加深入的理解散列表。</p>
-
-<h2 id="参考资料:1ef033cbd1577857c2f001722bad4a2f">参考资料</h2>
-
-<ul>
-<li><a href="https://zh.wikipedia.org/wiki/%E5%93%88%E5%B8%8C%E8%A1%A8">散列表Wiki百科</a>  <a href="https://zh.wikipedia.org/wiki/%E6%95%A3%E5%88%97">散列wiki百科</a></li>
-<li><a href="https://www.amazon.cn/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6%E4%B8%9B%E4%B9%A6%C2%B7%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%88%86%E6%9E%90-Java%E8%AF%AD%E8%A8%80%E6%8F%8F%E8%BF%B0-%E9%A9%AC%E5%85%8B%C2%B7%E8%89%BE%E4%BC%A6%C2%B7%E7%BB%B4%E6%96%AF/dp/B01CNP0CG6/ref=sr_1_2?ie=UTF8&amp;qid=1470986690&amp;sr=8-2&amp;keywords=%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95%E5%88%86%E6%9E%90">数据结构与算法分析:Java语言描述</a></li>
-</ul>
-
-<blockquote>
-<p>如果你觉得我的文章写得不错，对你有所启发的话，欢迎分享，评论。谢谢支持
-                                                                                           ——jatesun</p>
-</blockquote>
 
             </div>
             <footer class="article-footer">
-    <a data-url="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" data-id="1ef033cbd1577857c2f001722bad4a2f" class="article-share-link">
+    <a data-url="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" data-id="69821dbc4807e9884618c48763635519" class="article-share-link">
         分享
     </a>
     
-    <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82/#disqus_thread" class="article-comment-link">
+    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap/#disqus_thread" class="article-comment-link">
         评论
     </a>
     
@@ -298,21 +351,14 @@
         
 <nav id="article-nav">
     
-    <a href="http://jatesun.github.io/2016/07/24/%E5%A6%82%E4%BD%95%E5%86%99%E5%A5%BD%E4%B8%80%E7%AF%87%E6%8A%80%E6%9C%AF%E5%8D%9A%E5%AE%A2" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">
           下一篇
       </strong>
-      <span class="article-nav-title">如何写好一篇技术博客</span>
+      <span class="article-nav-title">散列表面面观</span>
     </a>
     
 
-    
-    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">
-          上一篇
-      </strong>
-      <span class="article-nav-title">集合源码之hashMap</span>
-    </a>
     
 </nav>
 
@@ -359,7 +405,7 @@
                     <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg)" alt="散列表面面观" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -384,7 +430,7 @@
                     <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg)" alt="散列表面面观" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -409,7 +455,7 @@
                     <a href="http://jatesun.github.io/2016/07/24/%E5%A6%82%E4%BD%95%E5%86%99%E5%A5%BD%E4%B8%80%E7%AF%87%E6%8A%80%E6%9C%AF%E5%8D%9A%E5%AE%A2" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-22-write.jpg)" alt="散列表面面观" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-22-write.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -434,7 +480,7 @@
                     <a href="http://jatesun.github.io/2016/07/22/%E9%98%85%E8%AF%BB%E4%B9%A6%E5%8D%95" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19%20-shelter.jpg)" alt="散列表面面观" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19%20-shelter.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -459,7 +505,7 @@
                     <a href="http://jatesun.github.io/2016/04/18/%E5%8D%9A%E5%AE%A2%E5%BC%80%E7%AF%87" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19-hugo.png)" alt="散列表面面观" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19-hugo.png)" alt="集合源码之hashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
