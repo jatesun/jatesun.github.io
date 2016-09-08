@@ -151,7 +151,7 @@
     </div>
     <div class="article-info profile-block">
       <div class="article-info-block">
-        5
+        6
         <span>文章</span>
       </div>
       <div class="article-info-block">
@@ -231,6 +231,79 @@
 
     <section id="main">
     
+    
+    <article class="article article-type-post" itemscope="" itemprop="blogPost">
+        <div class="article-inner">
+            
+            <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" itemprop="url">
+                
+            
+            </a>
+
+            <header class="article-header">
+    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap">
+    <h1 class="article-title" itemprop="name">
+        集合源码之concurrentHashMap
+    </h1>
+    </a>
+    <div class="article-meta">
+        <div class="article-date">
+            <i class="fa fa-calendar"></i>
+            <time datetime="2016-09-08 14:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-09-08</time>
+
+        </div>
+
+        
+        
+            
+            
+            <div class="article-category">
+                <i class="fa fa-folder"></i>
+                
+                <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">源码阅读</a>
+                
+                
+            </div>
+            
+        
+
+        
+            
+            
+            <div class="article-category">
+                <i class="fa fa-tags"></i>
+                
+                <a class="article-category-link" href="http://jatesun.github.io/tags/%e6%95%a3%e5%88%97%e8%a1%a8">散列表</a>
+                &middot;
+                
+                <a class="article-category-link" href="http://jatesun.github.io/tags/%e9%9b%86%e5%90%88">集合</a>
+                
+                
+            </div>
+            
+        
+    </div>
+</header>
+
+            <div class="article-entry" itemprop="articleBody">
+                <p>
+                    <p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg" alt="" /></p>
+
+<h2 id="引子:449f8a64b7378a173d194376a42d7e5a">引子</h2>
+
+<p>上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。</p>
+
+                    <br>
+                </p>
+                <p class="article-more-link">
+                    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap">
+                        继续阅读
+                    </a>
+                </p>
+            </div>
+            
+        </div>
+    </article>
     
     <article class="article article-type-post" itemscope="" itemprop="blogPost">
         <div class="article-inner">
@@ -607,6 +680,31 @@
             
             <li>
                 <div class="item-thumbnail">
+                    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" class="thumbnail">
+                    
+                        
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg)" alt="jatesun" class="thumbnail-image"></span>
+                        
+                    
+                    </a>
+                </div>
+                <div class="item-inner">
+                    
+                    <p class="item-category">
+                        <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">
+                        源码阅读
+                        </a>
+                    </p>
+                    
+                    <p class="item-title"><a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" class="title">集合源码之concurrentHashMap</a></p>
+                    <p class="item-date">
+                        <time datetime="2016-09-08 14:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-09-08</time>
+                    </p>
+                </div>
+            </li>
+            
+            <li>
+                <div class="item-thumbnail">
                     <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" class="thumbnail">
                     
                         
@@ -705,31 +803,6 @@
                 </div>
             </li>
             
-            <li>
-                <div class="item-thumbnail">
-                    <a href="http://jatesun.github.io/2016/04/18/%E5%8D%9A%E5%AE%A2%E5%BC%80%E7%AF%87" class="thumbnail">
-                    
-                        
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19-hugo.png)" alt="jatesun" class="thumbnail-image"></span>
-                        
-                    
-                    </a>
-                </div>
-                <div class="item-inner">
-                    
-                    <p class="item-category">
-                        <a class="article-category-link" href="http://jatesun.github.io/categories/%e6%80%9d%e8%80%83%e6%84%9f%e6%82%9f">
-                        思考感悟
-                        </a>
-                    </p>
-                    
-                    <p class="item-title"><a href="http://jatesun.github.io/2016/04/18/%E5%8D%9A%E5%AE%A2%E5%BC%80%E7%AF%87" class="title">博客开篇</a></p>
-                    <p class="item-date">
-                        <time datetime="2016-04-18 13:07:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-04-18</time>
-                    </p>
-                </div>
-            </li>
-            
         </ul>
     </div>
 </div>
@@ -761,7 +834,7 @@
                 <a class="category-list-link" href="http://jatesun.github.io/categories/%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb">
                     源码阅读
                 </a>
-                <span class="category-list-count">1</span>
+                <span class="category-list-count">2</span>
             </li>
             
         </ul>

@@ -6,8 +6,174 @@
     <description>Recent content in Posts on jatesun</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 24 Aug 2016 16:26:31 +0200</lastBuildDate>
+    <lastBuildDate>Thu, 08 Sep 2016 14:26:31 +0200</lastBuildDate>
     <atom:link href="http://jatesun.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>集合源码之concurrentHashMap</title>
+      <link>http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap</link>
+      <pubDate>Thu, 08 Sep 2016 14:26:31 +0200</pubDate>
+      
+      <guid>http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap</guid>
+      <description>
+
+&lt;p&gt;&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&#34;引子:449f8a64b7378a173d194376a42d7e5a&#34;&gt;引子&lt;/h2&gt;
+
+&lt;p&gt;上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。&lt;/p&gt;
+
+&lt;p&gt;涉及到源码的分析，一般我们都是先分析数据结构，然后在分析算法，数据结结构和算法都理解了，那么你就了解了大部分内容。类似上篇hashmap，对concurrenthashmap的分析也分为三个部分：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;第一部分&lt;/strong&gt;：分析探究concurrenthashmap的数据结构。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;第二部分&lt;/strong&gt;：分析concurrenthashmap的重要算法实现。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;第三部分&lt;/strong&gt;：探究concurrenthashmap值得探讨的问题。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;为了简单，跟hashmap类似的部分本文将一笔带过，如果没看过hashmap源码可以看上篇文章&lt;a href=&#34;http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap/&#34;&gt;集合源码之hashmap&lt;/a&gt;，hashmap是concurrenthashmap的基础，不建议没读过hashmap直接看本篇文章。本文分析的源码采用的是concurrenthashmap较为简单的jdk1.6版本。&lt;/p&gt;
+
+&lt;h2 id=&#34;concurrenthashmap的数据结构:449f8a64b7378a173d194376a42d7e5a&#34;&gt;concurrentHashMap的数据结构&lt;/h2&gt;
+
+&lt;p&gt;首先我们来看concurrenthashmap数据结构的图示，有个整体的认识。
+&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-9-8-concurrenthashmap%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.jpg&#34; alt=&#34;&#34; /&gt;
+图里的是主要组成表示，我们更加具体的去分析concurrenthashmap的数据结构要分为concurrenthashmap的数据结构、segment的数据结构以及hashEntry的数据结构。重要的数据结构我们会解析用途以便大家更好的理解算法实现部分。&lt;/p&gt;
+
+&lt;h4 id=&#34;常量:449f8a64b7378a173d194376a42d7e5a&#34;&gt;常量&lt;/h4&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;DEFAULT_INITIAL_CAPACITY&lt;/strong&gt;：默认初始容量16，与hashmap相同。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;DEFAULT_LOAD_FACTOR&lt;/strong&gt;：默认装填因子0.75&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;DEFAULT_CONCURRENCY_LEVEL&lt;/strong&gt;：默认并发级别16。其实就是segment个数，那为什么叫并发级别而不是segment数量呢？这里有必要细讲一下，我们知道concurrenthashmap是通过分段锁来实现高效并发的，这里的锁就是指segment，每个segment持有一把锁管理自身的数据。所以有几个segment就有几把锁，也就是几的并发级别。另外，segment初始化之后数量不会再改变。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;MAXIMUM_CAPACITY&lt;/strong&gt;：最大容量。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;MAX_SEGMENTS&lt;/strong&gt;：最大并发级别。&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;RETRIES_BEFORE_LOCK&lt;/strong&gt;：查询操作无锁获取尝试次数。即某些查询操作先不加锁获取，如果获取的结果不对（获取期间concurrenthashmap值变化）重试，如果超过尝试次数，再进行加锁获取操作。&lt;/p&gt;
+
+&lt;h4 id=&#34;实例变量:449f8a64b7378a173d194376a42d7e5a&#34;&gt;实例变量&lt;/h4&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;segmentMask/segmentShift&lt;/strong&gt;：计算对应的segment索引使用。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;segments&lt;/strong&gt;：对应的segment数组。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;keySet/entrySet/values&lt;/strong&gt;：对应的key、entry set集合。值的values集合。&lt;/p&gt;
+
+&lt;h4 id=&#34;segment:449f8a64b7378a173d194376a42d7e5a&#34;&gt;segment&lt;/h4&gt;
+
+&lt;p&gt;我们有必要对segment单独的进行数据结构分析，因为主要的算法实现都是在segment中，segment是concurrenthashmap的灵魂。可以把segment看做是线程安全的hashmap，因为数据结构与hashmap非常相似。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;继承 ReentrantLock&lt;/strong&gt;：因此segment具有锁的特性，可以对自身进行加锁解锁等操作。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;count/modCount/threshold/loadfactor&lt;/strong&gt;：数量、修改次数、扩容临界值、装填因子。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;hashEntry[]&lt;/strong&gt;：真正存储数据的节点类数组。数据结构如开篇图示。&lt;/p&gt;
+
+&lt;h2 id=&#34;concurrenthashmap重要算法实现:449f8a64b7378a173d194376a42d7e5a&#34;&gt;concurrenthashmap重要算法实现&lt;/h2&gt;
+
+&lt;p&gt;正如上文提到的，concurrenthashmap的灵魂是segment，segment的算法实现是整个concurrenthashmap的基础，我们会着重分析segment的实现。&lt;/p&gt;
+
+&lt;h4 id=&#34;构造方法:449f8a64b7378a173d194376a42d7e5a&#34;&gt;构造方法&lt;/h4&gt;
+
+&lt;p&gt;多个构造方法，只讨论最核心的构造方法。主要分为下面几个步骤：&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;校验参数&lt;/strong&gt;：校验入参初始容量、装填因子、并发级别合法性。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;根据并发级别确定segment数组大小&lt;/strong&gt;：segment也得是2的指数大小。segmentmask为segment的大小-1，segmentshift为32减去调整并发级别次数。&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;初始化segment&lt;/strong&gt;：这里有段代码值得讨论。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-java&#34;&gt;    int c = initialCapacity / ssize;
+    if (c * ssize &amp;lt; initialCapacity)
+        ++c;
+    int cap = 1;
+    while (cap &amp;lt; c)
+        cap &amp;lt;&amp;lt;= 1;
+
+
+    for (int i = 0; i &amp;lt; this.segments.length; ++i)
+        this.segments[i] = new Segment&amp;lt;K,V&amp;gt;(cap, loadFactor);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这段代码计算cap的最终目的是为了确认初始化segment大小，让cap与segment总数的乘积要大于等于初始容量的大小。&lt;/p&gt;
+
+&lt;h4 id=&#34;重要算法:449f8a64b7378a173d194376a42d7e5a&#34;&gt;重要算法&lt;/h4&gt;
+
+&lt;p&gt;需要说明的是除了全局的算法，大部分算法都是确定是哪个segment，然后调用segment方法。分为四类探讨增删改查，另外不接受null的value。&lt;/p&gt;
+
+&lt;h5 id=&#34;查:449f8a64b7378a173d194376a42d7e5a&#34;&gt;查&lt;/h5&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;isEmpty()&lt;/strong&gt;：需要校验所有的segment，所有算法实现要考虑的比hashmap要多。主要分为两步：初次校验、再次校验。这两步很多方法用到，需要着重理解。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;初次校验&lt;/strong&gt;: 遍历所有segment，如果count不为0返回false，并记录每个segment的modcount以及所有的modcount以便再次校验。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;再次校验&lt;/strong&gt;:总modcount为0说明为空。不为0说明有值，那么就可能存在初次校验时发生值修改的情况，需要再次校验。遍历segment，如果count不为0以及每个modcount发生修改就返回false。&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;size()&lt;/strong&gt;：即所有segment的count和。先不加锁获取，失败加锁获取。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;不加锁获取&lt;/strong&gt;：循环次数由&lt;strong&gt;RETRIES_BEFORE_LOCK&lt;/strong&gt;决定。先遍历segment记录和、每个modcount以及总modcount。如果modcount不为0需要再次校验，校验时modcount不符则强制加锁读取，否则获取第二次校验和。两次和相同即为size，不同再次循环。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;加锁获取&lt;/strong&gt;：两次的和不同的前提。遍历segment加锁、遍历取和、遍历解锁。返回和值。&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;get(key)&lt;/strong&gt;：根据hash值找到对应的segment，然后调用segment的get方法。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;segment&amp;mdash;get(key,hash)&lt;/strong&gt;：如果count为0直接返回null。根据hash值得到对应entry的首节点，遍历节点，没找到返回null，找到了返回对应的value。但是这里需要注意的是get是不加锁操作，可能get时有线程修改value导致对应key的value为null，这时候需要加锁读取了（readValueUnderLock(e)）&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;containskey(key)&lt;/strong&gt;:根据hash值找到对应segment，调用contain方法&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;segment&amp;mdash;containsKey(key,hash)&lt;/strong&gt;：如果count为0直接返回false。根据hash值得到对应entry数组索引的首节点。遍历节点，存在返回true，否则返回false。&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;containsValue(value)&lt;/strong&gt;：因为value存在的segment不确定，需要遍历所有的segment。与size的操作相同，先不加锁执行，然后如果需要在加锁执行。主要分为三步：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;不加锁读取&lt;/strong&gt;：遍历segment，调用segment的containsvalue方法，包含返回true，否则执行不加锁校验方法。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;不加锁校验&lt;/strong&gt;：总modcount不为0，校验每个segment的modcount，如果有不相同说明值发生改变需要加锁读取，如果modcount没变说明不包含指定value，返回false。&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;加锁读取&lt;/strong&gt;：遍历segment加锁。遍历segment调用containsvalue，存在返回true，否则返回false，遍历解锁。&lt;/p&gt;
+
+&lt;h5 id=&#34;增-put-key-value-putifabsent-key-value:449f8a64b7378a173d194376a42d7e5a&#34;&gt;增（put(key,value)/putIfAbsent(key,value)）&lt;/h5&gt;
+
+&lt;p&gt;增加方法也是调用segment的put(key,hash,value,boolean onlyIfAbsent)。onlyifabsent如果为true，则如果segment存在key不替换value。put默认替换value。put方法先lock，然后进行put操作。put方法跟hashmap类似，此处不赘述。&lt;/p&gt;
+
+&lt;h5 id=&#34;删-remove-key-remove-key-value:449f8a64b7378a173d194376a42d7e5a&#34;&gt;删（remove(key)/remove(key,value)）&lt;/h5&gt;
+
+&lt;p&gt;删除方法也是调用segment的remove(key,hash,value)方法。先找到要删除的节点，找到后删除节点，但是这里的删除跟hashmap中的有所不同，因为hashentry的next是final的不可改变，所以只能新建节点，next指向删除节点的next，然后克隆删除节点前继节点，这样就完成了删除操作。
+另外clear方法是遍历segment，调用segment的clear方法。clear方法加锁，遍历hashentry数组置null。&lt;/p&gt;
+
+&lt;h5 id=&#34;改:449f8a64b7378a173d194376a42d7e5a&#34;&gt;改&lt;/h5&gt;
+
+&lt;p&gt;修改方法有两个，一个是replace(key,value)调用segment的replace(key,hash,value)，另一个是replace(key,oldvalue,newvalue)调用segment的replace(key,hash,oldvalue,newvalue)。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;segment&amp;mdash;replace(key, hash, value)&lt;/strong&gt;：先加锁，然后遍历节点找到对应的节点，替换value。如果不存在key对应的节点就返回null。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;segment&amp;mdash;replace(key, hash,oldvalue,newvalue)&lt;/strong&gt;：跟上面的方法类似，不同的是如果节点里的value跟传入的oldvalue不同也不进行替换。
+##深入探讨&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&#34;concurrenthashmap的弱一致性:449f8a64b7378a173d194376a42d7e5a&#34;&gt;concurrenthashmap的弱一致性&lt;/h4&gt;
+
+&lt;p&gt;什么叫弱一致性？理想的强一致性就是放入一个元素后，立即获取元素就是刚放入的元素，但是concurrenthashmap可能某时间段看不到这个元素。如下图两个线程执行顺序：&lt;img src=&#34;http://oajsuo3nv.bkt.clouddn.com/2016-9-8-%E5%BC%B1%E4%B8%80%E8%87%B4.jpg&#34; alt=&#34;&#34; /&gt;则刚放入的元素可能会取不到。详细的可以参考文章&lt;a href=&#34;http://ifeve.com/concurrenthashmap-weakly-consistent/&#34;&gt;为什么ConcurrentHashMap是弱一致的&lt;/a&gt;&lt;/p&gt;
+
+&lt;h4 id=&#34;与hashtable-collections封装后的synchronizedmap比较:449f8a64b7378a173d194376a42d7e5a&#34;&gt;与hashtable、collections封装后的SynchronizedMap比较&lt;/h4&gt;
+
+&lt;p&gt;其实还可以加入concurrenthashmap的segment。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;hashtable&lt;/strong&gt;：使用synchronized关键字对方法进行修饰。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;SynchronizedMap&lt;/strong&gt;：使用一个mutex对象作为锁，每次访问方法必须要获取mutex对象的锁。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;segment&lt;/strong&gt;：使用ReentrantLock作为锁，访问方法时lock进行加锁&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;concurrenthashmap&lt;/strong&gt;：多个segment。
+一对比就可以看出concurrenthashmap引入并发级别的策略，可以让concurrenthashmap在多线程环境的性能更加突出，速度也更快。&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
     
     <item>
       <title>集合源码之hashMap</title>

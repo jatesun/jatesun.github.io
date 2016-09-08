@@ -18,18 +18,18 @@
     <link rel="stylesheet" href="http://jatesun.github.io/fancybox/jquery.fancybox.css">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400italic,400,600' rel='stylesheet' type='text/css'>
     <link href='https://fonts.googleapis.com/css?family=Source+Code+Pro' rel='stylesheet' type='text/css'>
-    <meta property="og:title" content="集合源码之hashMap" />
+    <meta property="og:title" content="集合源码之concurrentHashMap" />
 <meta property="og:description" content="
 
 引子
 
-java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
+上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。
 " />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" />
+<meta property="og:url" content="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" />
 
 
-<meta property="og:updated_time" content="2016-08-24T16:26:31&#43;02:00"/>
+<meta property="og:updated_time" content="2016-09-08T14:26:31&#43;02:00"/>
 
 
 
@@ -42,17 +42,17 @@ java的集合类使我们经常使用的，而hashmap更是集合中常用的集
 
     
     
-<meta itemprop="name" content="集合源码之hashMap">
+<meta itemprop="name" content="集合源码之concurrentHashMap">
 <meta itemprop="description" content="
 
 引子
 
-java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
+上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。
 ">
 
 
-<meta itemprop="dateModified" content="2016-08-24T16:26:31&#43;02:00" />
-<meta itemprop="wordCount" content="70">
+<meta itemprop="dateModified" content="2016-09-08T14:26:31&#43;02:00" />
+<meta itemprop="wordCount" content="116">
 
 
 
@@ -64,12 +64,12 @@ java的集合类使我们经常使用的，而hashmap更是集合中常用的集
 
 
 
-<meta name="twitter:title" content="集合源码之hashMap"/>
+<meta name="twitter:title" content="集合源码之concurrentHashMap"/>
 <meta name="twitter:description" content="
 
 引子
 
-java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考散列表面面观。
+上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。
 "/>
 
 
@@ -176,15 +176,15 @@ java的集合类使我们经常使用的，而hashmap更是集合中常用的集
             
 
             <header class="article-header">
-    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap">
+    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap">
     <h1 class="article-title" itemprop="name">
-        集合源码之hashMap
+        集合源码之concurrentHashMap
     </h1>
     </a>
     <div class="article-meta">
         <div class="article-date">
             <i class="fa fa-calendar"></i>
-            <time datetime="2016-08-24 16:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-08-24</time>
+            <time datetime="2016-09-08 14:26:31 &#43;0200 &#43;0200" itemprop="datePublished">2016-09-08</time>
 
         </div>
 
@@ -223,124 +223,169 @@ java的集合类使我们经常使用的，而hashmap更是集合中常用的集
             <div class="article-entry" itemprop="articleBody">
                 
 
-<p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg" alt="" /></p>
+<p><img src="http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg" alt="" /></p>
 
-<h2 id="引子:69821dbc4807e9884618c48763635519">引子</h2>
+<h2 id="引子:449f8a64b7378a173d194376a42d7e5a">引子</h2>
 
-<p>java的集合类使我们经常使用的，而hashmap更是集合中常用的集合类。由于使用的散列，hashmap的crud操作都接近于常数操作时间，本文目的是探究hashmap的底层实现，看java中的散列实现，希望能给想要了解hashmap实现的童鞋一点帮助，需要注意的是hashmap不是线程安全的集合类。 本文分为三部分：第一部分探究hashmap的数据结构、第二部分探究hashmap的重要算法实现、第三部分探究hashmap中值得探讨的地方。文章不会列出详细源码，常规代码概述而过，文章假定读者已经具备散列的相关基础知识，如果你对散列不熟悉或者想重温一下，请参考<a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82/">散列表面面观</a>。</p>
+<p>上篇解析过的hashmap不是线程安全的，因此并发大师Doug Lea在jdk1.5增加了concurrenthashmap类以满足开发者在多线程环境安全使用map的需要。concurrenthashmap作为多线程环境常使用的类，它是如何实现线程安全的？但是又为什么说它不能完全替代hashtable？弱一致性又是怎样一回事？读完这篇解析concurrenthashmap的文章，我相信你会对concurrenthashmap的方方面面有一定的了解。</p>
 
-<h2 id="hashmap的数据结构:69821dbc4807e9884618c48763635519">hashMap的数据结构</h2>
-
-<p>程序是由数据结构和算法构成，弄懂了数据结构和算法，这个程序也就自然明白。而数据结构更是程序的骨架。所以首先，我们看一下hashmap的数据结构示意图，在示意图的基础上进行。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-08-21-hashmap.jpg" alt="" /></p>
-
-<h4 id="散列表相关:69821dbc4807e9884618c48763635519">散列表相关</h4>
+<p>涉及到源码的分析，一般我们都是先分析数据结构，然后在分析算法，数据结结构和算法都理解了，那么你就了解了大部分内容。类似上篇hashmap，对concurrenthashmap的分析也分为三个部分：</p>
 
 <ul>
-<li><strong>数组</strong>：即为上图的table，也就是hashmap底层的存储结构。该数字中存放的是hashmap定义的节点类，由于hashmap对冲突采用的拉链法，所以节点类之间形成了链表。</li>
-<li><strong>节点类</strong>：存储数据的节点类Entry。节点类数据结构为key、value、hash值以及指向下一个节点的next节点（类似链表的节点类）。</li>
-<li><strong>装填因子</strong>：loadFactor。在散列表面面观中提到，采用拉链法解决冲突的散列表的装填因子在0.75到0.80之间。hashmap的默认装填因子为0.75</li>
-<li><strong>散列函数</strong>：下文详述。</li>
-<li><strong>初始容量大小</strong>：默认为16，也可以通过构造函数传入，但是必须是2的指数，原因下文详述。</li>
+<li><strong>第一部分</strong>：分析探究concurrenthashmap的数据结构。</li>
+<li><strong>第二部分</strong>：分析concurrenthashmap的重要算法实现。</li>
+<li><strong>第三部分</strong>：探究concurrenthashmap值得探讨的问题。</li>
+</ul>
 
-<li><p><strong>临界容量</strong>：即为扩容的临界容量，为容量大小与装填因子的乘积。</p>
+<p>为了简单，跟hashmap类似的部分本文将一笔带过，如果没看过hashmap源码可以看上篇文章<a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap/">集合源码之hashmap</a>，hashmap是concurrenthashmap的基础，不建议没读过hashmap直接看本篇文章。本文分析的源码采用的是concurrenthashmap较为简单的jdk1.6版本。</p>
 
-<h4 id="实例变量:69821dbc4807e9884618c48763635519">实例变量</h4></li>
+<h2 id="concurrenthashmap的数据结构:449f8a64b7378a173d194376a42d7e5a">concurrentHashMap的数据结构</h2>
 
-<li><p><strong>大小</strong>：hashmap的大小（size）。</p></li>
+<p>首先我们来看concurrenthashmap数据结构的图示，有个整体的认识。
+<img src="http://oajsuo3nv.bkt.clouddn.com/2016-9-8-concurrenthashmap%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.jpg" alt="" />
+图里的是主要组成表示，我们更加具体的去分析concurrenthashmap的数据结构要分为concurrenthashmap的数据结构、segment的数据结构以及hashEntry的数据结构。重要的数据结构我们会解析用途以便大家更好的理解算法实现部分。</p>
 
-<li><p><strong>最大容量</strong>：MAXIMUM_CAPACITY，为1 &lt;&lt; 30。</p></li>
+<h4 id="常量:449f8a64b7378a173d194376a42d7e5a">常量</h4>
 
-<li><p><strong>修改次数</strong>：modCount。</p>
+<ul>
+<li><strong>DEFAULT_INITIAL_CAPACITY</strong>：默认初始容量16，与hashmap相同。</li>
+<li><strong>DEFAULT_LOAD_FACTOR</strong>：默认装填因子0.75</li>
+<li><strong>DEFAULT_CONCURRENCY_LEVEL</strong>：默认并发级别16。其实就是segment个数，那为什么叫并发级别而不是segment数量呢？这里有必要细讲一下，我们知道concurrenthashmap是通过分段锁来实现高效并发的，这里的锁就是指segment，每个segment持有一把锁管理自身的数据。所以有几个segment就有几把锁，也就是几的并发级别。另外，segment初始化之后数量不会再改变。</li>
+<li><strong>MAXIMUM_CAPACITY</strong>：最大容量。</li>
+<li><strong>MAX_SEGMENTS</strong>：最大并发级别。</li>
 
-<h2 id="hashmap关键算法实现:69821dbc4807e9884618c48763635519">hashMap关键算法实现</h2>
+<li><p><strong>RETRIES_BEFORE_LOCK</strong>：查询操作无锁获取尝试次数。即某些查询操作先不加锁获取，如果获取的结果不对（获取期间concurrenthashmap值变化）重试，如果超过尝试次数，再进行加锁获取操作。</p>
 
-<p>hashMap实现了map接口，下面我们会对map接口中的关键方法进行分析。</p>
+<h4 id="实例变量:449f8a64b7378a173d194376a42d7e5a">实例变量</h4></li>
 
-<h4 id="构造方法:69821dbc4807e9884618c48763635519">构造方法</h4>
+<li><p><strong>segmentMask/segmentShift</strong>：计算对应的segment索引使用。</p></li>
 
-<p>hashMap提供了三个构造函数：无参构造函数、单参构造函数（容量）、双参构造函数（容量、装填因子）。我们探讨双参构造函数，其他两个都是以此为基础。构造方法分为如下几步：</p></li>
+<li><p><strong>segments</strong>：对应的segment数组。</p></li>
 
-<li><p><strong>参数校验</strong>：
-1、如果初始容量小于0，抛出参数异常。如果初始容量大于hashmap最大容量，那么默认赋值为最大容量
-2、如果装填因子小于0或不合法也抛出参数异常。</p></li>
+<li><p><strong>keySet/entrySet/values</strong>：对应的key、entry set集合。值的values集合。</p>
 
-<li><p><strong>调整容量</strong>：调整容量至不小于初始容量的2的指数容量。即容量必须为2的指数大小。</p></li>
+<h4 id="segment:449f8a64b7378a173d194376a42d7e5a">segment</h4>
 
-<li><p><strong>初始化</strong>：初始化装填因子、初始化临界容量、初始化数组（大小即为调整容量后的大小）</p></li>
+<p>我们有必要对segment单独的进行数据结构分析，因为主要的算法实现都是在segment中，segment是concurrenthashmap的灵魂。可以把segment看做是线程安全的hashmap，因为数据结构与hashmap非常相似。</p></li>
 
-<li><p><strong>init函数</strong>：钩子函数，用于子类实现自己特殊要求。</p>
+<li><p><strong>继承 ReentrantLock</strong>：因此segment具有锁的特性，可以对自身进行加锁解锁等操作。</p></li>
 
-<h4 id="重要算法:69821dbc4807e9884618c48763635519">重要算法</h4>
+<li><p><strong>count/modCount/threshold/loadfactor</strong>：数量、修改次数、扩容临界值、装填因子。</p></li>
 
-<p>对hashmap中重要的算法案进行分析，分为增删改查。所有的增删查方法modcount都要修改。</p>
+<li><p><strong>hashEntry[]</strong>：真正存储数据的节点类数组。数据结构如开篇图示。</p>
 
-<h5 id="增-put-k-v-改:69821dbc4807e9884618c48763635519">增（put（K,V））、改</h5>
+<h2 id="concurrenthashmap重要算法实现:449f8a64b7378a173d194376a42d7e5a">concurrenthashmap重要算法实现</h2>
 
-<p>put的过程很简单：先校验参数，如果key为null那么就调用putForNullKey方法，否则找到key对应的table位置，遍历该位置的链表，如果链表中有该key那么就修改value否则就新增一个节点到改链表里。我们讨论put方法的几个函数细节：</p></li>
+<p>正如上文提到的，concurrenthashmap的灵魂是segment，segment的算法实现是整个concurrenthashmap的基础，我们会着重分析segment的实现。</p>
 
-<li><p><strong>putForNullKey</strong>：此方法针对key为null的put，需要注意的是null总是放在table[0]的位置。方法步骤跟put普通元素一样，遍历table[0]的链表，如果链表中存在null那么就修改value，如果不存在就新增Entry节点。看下面的动图可能更加形象。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-17-put-null.gif" alt="" /></p></li>
+<h4 id="构造方法:449f8a64b7378a173d194376a42d7e5a">构造方法</h4>
 
-<li><p><strong>hash重散列</strong>:将key的hashcode再进行一次散列计算，使hash的值更加分散。</p></li>
+<p>多个构造方法，只讨论最核心的构造方法。主要分为下面几个步骤：</p></li>
 
-<li><p><strong>indexFor</strong>：见最后一部分的问题探讨。</p></li>
+<li><p><strong>校验参数</strong>：校验入参初始容量、装填因子、并发级别合法性。</p></li>
 
-<li><p><strong>addEntry</strong>：增加一个节点。由于hashmap维护的是单链表，所以是在表头插入。增加节点的时候我们要考虑增加后是否需要扩容。如果需要扩容即扩容两倍，然后把源hashmap的table中的值拷贝到新的table中，需要重新散列，所以这个操作为O(n)时间复杂度。</p>
+<li><p><strong>根据并发级别确定segment数组大小</strong>：segment也得是2的指数大小。segmentmask为segment的大小-1，segmentshift为32减去调整并发级别次数。</p></li>
 
-<h5 id="删-remove-k:69821dbc4807e9884618c48763635519">删（remove(K)）</h5>
+<li><p><strong>初始化segment</strong>：这里有段代码值得讨论。</p>
 
-<p>删除的过程也很清晰：先计算key所对应的table索引值，然后就是单链表删除节点的方法（单链表删除需要保留前一个节点以便完成节点删除后的替换）。我们以删除10为例子，看下过程。<img src="http://oajsuo3nv.bkt.clouddn.com/2016-8-24-remove.gif" alt="" /></p>
+<pre><code class="language-java">    int c = initialCapacity / ssize;
+    if (c * ssize &lt; initialCapacity)
+        ++c;
+    int cap = 1;
+    while (cap &lt; c)
+        cap &lt;&lt;= 1;
 
-<h5 id="查-get-key:69821dbc4807e9884618c48763635519">查（get(key)）</h5>
 
-<p>查询很简单：如果为null就调用getForNullKey（table[0]顺序查找）。不为空找到table索引，然后遍历索引所在的单链表，如果找到key返回对应的value，否则返回null。查询比较简单，这里就不动态展示了。</p>
-
-<h5 id="其他方法:69821dbc4807e9884618c48763635519">其他方法</h5></li>
-
-<li><p><strong>size</strong>：返回当前map大小。</p></li>
-
-<li><p><strong>isEmpty</strong>：判断map是否为空。</p></li>
-
-<li><p><strong>getEntry</strong>：通过key找寻对应的entry节点。</p></li>
-
-<li><p><strong>keySet和values</strong>：通过迭代器返回key和value的集合，这里不进行讨论。</p>
-
-<h2 id="hashmap若干问题:69821dbc4807e9884618c48763635519">hashMap若干问题</h2>
-
-<h4 id="容量为2的指数的奥妙:69821dbc4807e9884618c48763635519">容量为2的指数的奥妙？</h4>
-
-<p>在文章开始，我们提到了hashmap数组容量必须为2的指数大小，而且构造函数参数如果不是2的指数还会调整到满足此规则的不小于传入参数的值，现在我们就来探究一下hashmap为什么要有这个规则。其实奥妙就在indexfor中,indexfor函数源码如下</p>
-
-<pre><code class="language-java">static int indexFor(int h, int length) {
-return h &amp; (length-1);
-}
+    for (int i = 0; i &lt; this.segments.length; ++i)
+        this.segments[i] = new Segment&lt;K,V&gt;(cap, loadFactor);
 </code></pre>
 
-<p>关键就是在于length-1把容量大小-1后二进制所有的位都变为1，这样会减少散列冲突。我们以长度16和长度15比较<img src="http://oajsuo3nv.bkt.clouddn.com/2016-08-17-hashyu.jpg" alt="" />可以看到长度为15发生散列冲突，在散列值质量高的情况（hashmap通过hash函数保证），hashmap这种做法会让散列冲突尽可能减少。</p>
+<p>这段代码计算cap的最终目的是为了确认初始化segment大小，让cap与segment总数的乘积要大于等于初始容量的大小。</p>
 
-<h4 id="transient关键字:69821dbc4807e9884618c48763635519">transient关键字？</h4>
+<h4 id="重要算法:449f8a64b7378a173d194376a42d7e5a">重要算法</h4>
 
-<p>我们可以看到hashmap中的table使用transient关键字修饰。transient关键字我们都熟悉，在序列化的时候可以不被序列化。那hashmap如何传值？答案当然是是通过writeObject，将hashmap中的值进行序列化。这里考虑到两个问题</p></li>
+<p>需要说明的是除了全局的算法，大部分算法都是确定是哪个segment，然后调用segment方法。分为四类探讨增删改查，另外不接受null的value。</p>
 
-<li><p><strong>空间考虑</strong>：hashmap很多存储空间尚未使用，序列化没有意义，仅序列化存储元素数组</p></li>
+<h5 id="查:449f8a64b7378a173d194376a42d7e5a">查</h5></li>
 
-<li><p><strong>不同jvm考虑</strong>：table中的内存分布是根据key的hashcode计算的，但是不同的jvm针对同一个可以产生的hashcode可能是不同的。如果使用默认序列化，反序列化之后元素位置是跟序列化之前相同的，可是这个jvm产生的hashcode变了，indexfor对于同一个key在不同的jvm对应不同的值，这样肯定不行的。这就是为什么要加transient关键字，为了就是忽略内存分布，通过readObject将hashmap重新生成。</p>
+<li><p><strong>isEmpty()</strong>：需要校验所有的segment，所有算法实现要考虑的比hashmap要多。主要分为两步：初次校验、再次校验。这两步很多方法用到，需要着重理解。</p>
 
-<h4 id="volatile关键字:69821dbc4807e9884618c48763635519">volatile关键字？</h4>
+<ul>
+<li><strong>初次校验</strong>: 遍历所有segment，如果count不为0返回false，并记录每个segment的modcount以及所有的modcount以便再次校验。</li>
+<li><strong>再次校验</strong>:总modcount为0说明为空。不为0说明有值，那么就可能存在初次校验时发生值修改的情况，需要再次校验。遍历segment，如果count不为0以及每个modcount发生修改就返回false。</li>
+</ul></li>
 
-<p>在hashmap中，modCount、keySet、values都使用volatile关键字修饰。这里的原因其实很简单：我们知道volatile关键字一个特点就是内存可见性，某个变量修改之后其他线程会立即看到修改，上述三个变量都需要这样的特性，针对修改需要立即体现，所以用到了volatile关键字。</p>
+<li><p><strong>size()</strong>：即所有segment的count和。先不加锁获取，失败加锁获取。</p>
 
-<h4 id="非线程安全:69821dbc4807e9884618c48763635519">非线程安全？</h4>
+<ul>
+<li><strong>不加锁获取</strong>：循环次数由<strong>RETRIES_BEFORE_LOCK</strong>决定。先遍历segment记录和、每个modcount以及总modcount。如果modcount不为0需要再次校验，校验时modcount不符则强制加锁读取，否则获取第二次校验和。两次和相同即为size，不同再次循环。</li>
+<li><strong>加锁获取</strong>：两次的和不同的前提。遍历segment加锁、遍历取和、遍历解锁。返回和值。</li>
+</ul></li>
 
-<p>在多线程情况下，hashmap的put、get方法都是很脆弱的。这是一个比较大的话题，推荐大家看耗子叔的博客：<a href="http://coolshell.cn/articles/9606.html">疫苗：Java HashMap的死循环</a></p></li>
+<li><p><strong>get(key)</strong>：根据hash值找到对应的segment，然后调用segment的get方法。</p>
+
+<ul>
+<li><strong>segment&mdash;get(key,hash)</strong>：如果count为0直接返回null。根据hash值得到对应entry的首节点，遍历节点，没找到返回null，找到了返回对应的value。但是这里需要注意的是get是不加锁操作，可能get时有线程修改value导致对应key的value为null，这时候需要加锁读取了（readValueUnderLock(e)）</li>
+</ul></li>
+
+<li><p><strong>containskey(key)</strong>:根据hash值找到对应segment，调用contain方法</p>
+
+<ul>
+<li><strong>segment&mdash;containsKey(key,hash)</strong>：如果count为0直接返回false。根据hash值得到对应entry数组索引的首节点。遍历节点，存在返回true，否则返回false。</li>
+</ul></li>
+
+<li><p><strong>containsValue(value)</strong>：因为value存在的segment不确定，需要遍历所有的segment。与size的操作相同，先不加锁执行，然后如果需要在加锁执行。主要分为三步：</p>
+
+<ul>
+<li><strong>不加锁读取</strong>：遍历segment，调用segment的containsvalue方法，包含返回true，否则执行不加锁校验方法。</li>
+<li><strong>不加锁校验</strong>：总modcount不为0，校验每个segment的modcount，如果有不相同说明值发生改变需要加锁读取，如果modcount没变说明不包含指定value，返回false。</li>
+
+<li><p><strong>加锁读取</strong>：遍历segment加锁。遍历segment调用containsvalue，存在返回true，否则返回false，遍历解锁。</p>
+
+<h5 id="增-put-key-value-putifabsent-key-value:449f8a64b7378a173d194376a42d7e5a">增（put(key,value)/putIfAbsent(key,value)）</h5>
+
+<p>增加方法也是调用segment的put(key,hash,value,boolean onlyIfAbsent)。onlyifabsent如果为true，则如果segment存在key不替换value。put默认替换value。put方法先lock，然后进行put操作。put方法跟hashmap类似，此处不赘述。</p>
+
+<h5 id="删-remove-key-remove-key-value:449f8a64b7378a173d194376a42d7e5a">删（remove(key)/remove(key,value)）</h5>
+
+<p>删除方法也是调用segment的remove(key,hash,value)方法。先找到要删除的节点，找到后删除节点，但是这里的删除跟hashmap中的有所不同，因为hashentry的next是final的不可改变，所以只能新建节点，next指向删除节点的next，然后克隆删除节点前继节点，这样就完成了删除操作。
+另外clear方法是遍历segment，调用segment的clear方法。clear方法加锁，遍历hashentry数组置null。</p>
+
+<h5 id="改:449f8a64b7378a173d194376a42d7e5a">改</h5>
+
+<p>修改方法有两个，一个是replace(key,value)调用segment的replace(key,hash,value)，另一个是replace(key,oldvalue,newvalue)调用segment的replace(key,hash,oldvalue,newvalue)。</p>
+
+<ul>
+<li><strong>segment&mdash;replace(key, hash, value)</strong>：先加锁，然后遍历节点找到对应的节点，替换value。如果不存在key对应的节点就返回null。</li>
+<li><strong>segment&mdash;replace(key, hash,oldvalue,newvalue)</strong>：跟上面的方法类似，不同的是如果节点里的value跟传入的oldvalue不同也不进行替换。
+##深入探讨</li>
+</ul></li>
+</ul></li>
+</ul>
+
+<h4 id="concurrenthashmap的弱一致性:449f8a64b7378a173d194376a42d7e5a">concurrenthashmap的弱一致性</h4>
+
+<p>什么叫弱一致性？理想的强一致性就是放入一个元素后，立即获取元素就是刚放入的元素，但是concurrenthashmap可能某时间段看不到这个元素。如下图两个线程执行顺序：<img src="http://oajsuo3nv.bkt.clouddn.com/2016-9-8-%E5%BC%B1%E4%B8%80%E8%87%B4.jpg" alt="" />则刚放入的元素可能会取不到。详细的可以参考文章<a href="http://ifeve.com/concurrenthashmap-weakly-consistent/">为什么ConcurrentHashMap是弱一致的</a></p>
+
+<h4 id="与hashtable-collections封装后的synchronizedmap比较:449f8a64b7378a173d194376a42d7e5a">与hashtable、collections封装后的SynchronizedMap比较</h4>
+
+<p>其实还可以加入concurrenthashmap的segment。</p>
+
+<ul>
+<li><strong>hashtable</strong>：使用synchronized关键字对方法进行修饰。</li>
+<li><strong>SynchronizedMap</strong>：使用一个mutex对象作为锁，每次访问方法必须要获取mutex对象的锁。</li>
+<li><strong>segment</strong>：使用ReentrantLock作为锁，访问方法时lock进行加锁</li>
+<li><strong>concurrenthashmap</strong>：多个segment。
+一对比就可以看出concurrenthashmap引入并发级别的策略，可以让concurrenthashmap在多线程环境的性能更加突出，速度也更快。</li>
 </ul>
 
             </div>
             <footer class="article-footer">
-    <a data-url="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" data-id="69821dbc4807e9884618c48763635519" class="article-share-link">
+    <a data-url="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" data-id="449f8a64b7378a173d194376a42d7e5a" class="article-share-link">
         分享
     </a>
     
-    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap/#disqus_thread" class="article-comment-link">
+    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap/#disqus_thread" class="article-comment-link">
         评论
     </a>
     
@@ -351,21 +396,14 @@ return h &amp; (length-1);
         
 <nav id="article-nav">
     
-    <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">
           下一篇
       </strong>
-      <span class="article-nav-title">散列表面面观</span>
+      <span class="article-nav-title">集合源码之hashMap</span>
     </a>
     
 
-    
-    <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">
-          上一篇
-      </strong>
-      <span class="article-nav-title">集合源码之concurrentHashMap</span>
-    </a>
     
 </nav>
 
@@ -412,7 +450,7 @@ return h &amp; (length-1);
                     <a href="http://jatesun.github.io/2016/09/08/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bconcurrenthashmap" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-9-8-banner.jpg)" alt="集合源码之concurrentHashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -437,7 +475,7 @@ return h &amp; (length-1);
                     <a href="http://jatesun.github.io/2016/08/24/%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E4%B9%8Bhashmap" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-21-%E5%A4%A9%E7%A9%BA.jpg)" alt="集合源码之concurrentHashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -462,7 +500,7 @@ return h &amp; (length-1);
                     <a href="http://jatesun.github.io/2016/08/12/%E6%95%A3%E5%88%97%E8%A1%A8%E9%9D%A2%E9%9D%A2%E8%A7%82" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-8-12-sanlie.jpg)" alt="集合源码之concurrentHashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -487,7 +525,7 @@ return h &amp; (length-1);
                     <a href="http://jatesun.github.io/2016/07/24/%E5%A6%82%E4%BD%95%E5%86%99%E5%A5%BD%E4%B8%80%E7%AF%87%E6%8A%80%E6%9C%AF%E5%8D%9A%E5%AE%A2" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-22-write.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-22-write.jpg)" alt="集合源码之concurrentHashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
@@ -512,7 +550,7 @@ return h &amp; (length-1);
                     <a href="http://jatesun.github.io/2016/07/22/%E9%98%85%E8%AF%BB%E4%B9%A6%E5%8D%95" class="thumbnail">
                     
                         
-                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19%20-shelter.jpg)" alt="集合源码之hashMap" class="thumbnail-image"></span>
+                        <span style="background-image:url(http://oajsuo3nv.bkt.clouddn.com/2016-7-19%20-shelter.jpg)" alt="集合源码之concurrentHashMap" class="thumbnail-image"></span>
                         
                     
                     </a>
